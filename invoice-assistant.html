@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>業務發票助手</title>
+<style>
+:root {
+  --bg: #f2f0eb;
+  --surface: #ffffff;
+  --border: #ccc9c0;
+  --border-dark: #1a1a1a;
+  --text: #1a1a1a;
+  --muted: #888880;
+  --accent: #1a1a1a;
+  --accent-inv: #ffffff;
+  --red: #b5271f;
+  --green: #1a5c38;
+  --yellow-bg: #fffbe6;
+  --yellow-border: #d4c44a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--accent);
+  color: var(--accent-inv);
+  padding: 18px 16px 0;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.app-name { font-size: 17px; font-weight: bold; letter-spacing: 2px; }
+.app-sub  { font-size: 10px; opacity: .4; letter-spacing: 1.5px; margin-top: 3px; }
+.reset-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.35);
+  color: white;
+  padding: 7px 13px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 3px; }
+.tab {
+  flex: 1; padding: 11px 0;
+  text-align: center; font-size: 13px;
+  letter-spacing: .5px; border: none; cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  font-family: inherit; transition: .2s;
+}
+.tab.on  { background: var(--bg); color: var(--text); font-weight: bold; }
+.tab.off { background: rgba(255,255,255,.12); color: rgba(255,255,255,.55); }
+
+/* ── CONTENT ── */
+.content { padding: 16px; }
+.panel { display: none; }
+.panel.on { display: block; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.06);
+}
+.card-title {
+  font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 13px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── TOGGLE ── */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle-texts .tl { font-size: 15px; font-weight: bold; }
+.toggle-texts .ts { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.switch { position: relative; width: 54px; height: 28px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0;
+  background: #ccc; border-radius: 28px; cursor: pointer; transition: .3s;
+}
+.slider::before {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  left: 4px; bottom: 4px;
+  background: white; border-radius: 50%;
+  transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+input:checked + .slider { background: var(--accent); }
+input:checked + .slider::before { transform: translateX(26px); }
+
+/* ── ITEM ROW ── */
+.items-list { display: flex; flex-direction: column; gap: 10px; }
+.item-row {
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px;
+  background: #fafaf7; position: relative;
+}
+.item-top {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 9px;
+}
+.item-num { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.item-line-total { font-size: 14px; font-weight: bold; color: var(--green); }
+.item-fields { display: grid; grid-template-columns: 1fr 72px 88px; gap: 7px; }
+.fl { display: flex; flex-direction: column; gap: 3px; }
+.fl label { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+select, input[type=number] {
+  width: 100%; padding: 9px 8px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 15px; font-family: inherit;
+  background: white; color: var(--text);
+  -webkit-appearance: none;
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  padding-right: 26px;
+}
+.del-btn {
+  position: absolute; top: 9px; right: 9px;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--border); background: white;
+  color: var(--muted); font-size: 15px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.add-btn {
+  width: 100%; margin-top: 8px;
+  padding: 13px; border: 2px dashed var(--border);
+  border-radius: 8px; background: transparent;
+  color: var(--muted); font-size: 14px;
+  letter-spacing: 1px; cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── SUMMARY ── */
+.summary {
+  background: var(--accent); color: var(--accent-inv);
+  border-radius: 10px; padding: 16px; margin-bottom: 14px;
+}
+.sum-row {
+  display: flex; justify-content: space-between;
+  align-items: center; padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  font-size: 14px;
+}
+.sum-row:last-child { border: none; padding-top: 10px; margin-top: 4px; }
+.sum-row.big { font-size: 22px; font-weight: bold; }
+.sl { opacity: .65; font-size: 11px; letter-spacing: 1px; }
+.sum-row.big .sl { font-size: 13px; opacity: 1; }
+.sv { font-variant-numeric: tabular-nums; }
+
+/* ── PANEL 2 ── */
+.orig-display {
+  text-align: center; padding: 8px 0;
+  font-size: 26px; font-weight: bold; letter-spacing: 1px;
+}
+.orig-label {
+  text-align: center; font-size: 11px;
+  color: var(--muted); letter-spacing: 1px; margin-top: 4px;
+}
+
+.big-input-wrap { position: relative; }
+.big-input-wrap .sym {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px; color: var(--muted); pointer-events: none;
+}
+.big-input {
+  width: 100%; padding: 15px 15px 15px 36px;
+  border: 2px solid var(--border-dark);
+  border-radius: 8px; font-size: 28px;
+  font-weight: bold; font-family: 'Georgia', serif;
+  color: var(--text); background: white;
+  -webkit-appearance: none;
+}
+.big-input:focus { outline: none; border-color: #555; }
+.hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; letter-spacing: .5px; }
+
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.ri {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; text-align: center;
+}
+.ri.hi { border-color: var(--accent); background: #f8f7f2; }
+.ri.rd { border-color: var(--red); background: #fdf8f7; }
+.ri-label { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 5px; }
+.ri-val { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
+.ri.rd .ri-val { color: var(--red); }
+
+/* ── EMPTY ── */
+.empty {
+  text-align: center; padding: 36px 20px;
+  color: var(--muted); font-size: 13px;
+  letter-spacing: 1px; line-height: 2;
+}
+.empty .ico { font-size: 34px; margin-bottom: 8px; opacity: .3; }
+
+/* ══════════════════════════════
+   INVOICE VISUAL
+══════════════════════════════ */
+.inv-wrap {
+  border: 2px solid var(--border-dark);
+  border-radius: 4px; overflow: hidden;
+  background: white;
+  font-family: 'Georgia', serif;
+}
+.inv-hd {
+  background: var(--accent); color: white;
+  padding: 9px 14px; font-size: 12px;
+  letter-spacing: 3px; text-align: center; font-weight: bold;
+}
+.inv-remind {
+  background: var(--yellow-bg);
+  border-bottom: 1px solid var(--yellow-border);
+  padding: 8px 12px; font-size: 11px;
+  color: #7a6200; line-height: 1.7; letter-spacing: .3px;
+}
+.inv-remind strong { color: #5a4700; }
+
+/* items table */
+.inv-tbl { width: 100%; border-collapse: collapse; }
+.inv-tbl th {
+  background: #f0ede5; padding: 7px 5px;
+  font-size: 11px; letter-spacing: 1px;
+  border: 1px solid var(--border); text-align: center;
+  font-weight: bold;
+}
+.inv-tbl td {
+  padding: 8px 5px; font-size: 13px;
+  border: 1px solid var(--border); vertical-align: middle;
+}
+.inv-tbl .cn { width: 36%; word-break: break-all; }
+.inv-tbl .cq { width: 14%; text-align: center; }
+.inv-tbl .cp { width: 20%; text-align: right; font-variant-numeric: tabular-nums; }
+.inv-tbl .ca { width: 30%; text-align: right; font-variant-numeric: tabular-nums; }
+.inv-tbl tr.disc td { color: var(--red); font-style: italic; }
+
+/* footer rows */
+.inv-ft { border-top: 2px solid var(--border-dark); }
+.inv-ft-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.inv-ft-row:last-child { border-bottom: none; }
+.inv-ft-lbl {
+  width: 86px; flex-shrink: 0;
+  padding: 10px 8px; font-size: 11px;
+  letter-spacing: 1px; font-weight: bold;
+  background: #f0ede5;
+  border-right: 1px solid var(--border);
+  display: flex; align-items: center;
+}
+.inv-ft-val {
+  flex: 1; padding: 10px 12px;
+  font-size: 15px; font-weight: bold;
+  display: flex; align-items: center; justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+.inv-ft-val.big { font-size: 20px; color: var(--accent); }
+.inv-ft-val.tax-opts {
+  flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 3px;
+}
+.tax-row-opts { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
+.tax-row-opts .ck { color: var(--accent); font-weight: bold; }
+
+.inv-cw { padding: 10px 12px; }
+.inv-cw-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 4px; }
+.inv-cw-val { font-size: 15px; font-weight: bold; letter-spacing: 2px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="app-name">業務發票助手</div>
+      <div class="app-sub">INVOICE CALCULATOR · OFFLINE · NO DATA STORED</div>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">⟳ 清除</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on"  id="t1" onclick="switchTab(1)">📋 正算報價</button>
+    <button class="tab off" id="t2" onclick="switchTab(2)">🧮 倒算折讓</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ══ PANEL 1 ══ -->
+  <div class="panel on" id="p1">
+
+    <div class="card">
+      <div class="card-title">稅率設定</div>
+      <div class="toggle-row">
+        <div class="toggle-texts">
+          <div class="tl">含稅計算（5%）</div>
+          <div class="ts">開啟後自動加入營業稅</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="taxToggle" checked onchange="calc()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">品項清單</div>
+      <div class="items-list" id="itemsList"></div>
+      <button class="add-btn" onclick="addItem()">＋ 新增品項</button>
+    </div>
+
+    <div class="summary" id="summaryBox">
+      <div class="sum-row">
+        <span class="sl">未稅小計</span>
+        <span class="sv" id="s-sub">—</span>
+      </div>
+      <div class="sum-row" id="s-tax-row">
+        <span class="sl">營業稅（5%）</span>
+        <span class="sv" id="s-tax">—</span>
+      </div>
+      <div class="sum-row big">
+        <span class="sl">含稅總價</span>
+        <span class="sv" id="s-total">$0</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">發票填寫預覽</div>
+      <div id="inv1"><div class="empty"><div class="ico">🧾</div>請先輸入品項<br>即時顯示發票格式</div></div>
+    </div>
+
+  </div>
+
+  <!-- ══ PANEL 2 ══ -->
+  <div class="panel" id="p2">
+
+    <div class="card">
+      <div class="card-title">原始含稅總價（來自正算）</div>
+      <div class="orig-display" id="p2orig">—</div>
+      <div class="orig-label">請先在「正算報價」頁完成品項輸入</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">輸入優惠後總金額（含稅整數）</div>
+      <div class="big-input-wrap">
+        <span class="sym">$</span>
+        <input type="number" class="big-input" id="finalPrice"
+               placeholder="40000" inputmode="numeric" oninput="calcDiscount()">
+      </div>
+      <div class="hint">輸入你要向客戶收的含稅整數金額</div>
+    </div>
+
+    <div class="result-grid" id="resultGrid" style="display:none">
+      <div class="ri rd">
+        <div class="ri-label">品項折扣（未稅）</div>
+        <div class="ri-val" id="r-disc">—</div>
+      </div>
+      <div class="ri">
+        <div class="ri-label">銷售額合計（未稅）</div>
+        <div class="ri-val" id="r-sale">—</div>
+      </div>
+      <div class="ri">
+        <div class="ri-label">營業稅 5%</div>
+        <div class="ri-val" id="r-tax">—</div>
+      </div>
+      <div class="ri hi">
+        <div class="ri-label">優惠總計（含稅）</div>
+        <div class="ri-val" id="r-fin">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">發票填寫指引</div>
+      <div id="inv2"><div class="empty"><div class="ico">🧾</div>輸入優惠金額後<br>自動顯示發票填法</div></div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+
+<script>
+// ─── PRODUCTS ───────────────────────────────────────────────
+const PRODUCTS = [
+  'MIX-I-GO (130ml)',
+  'MIX-I-GO (160ml)',
+  'DEE-ZOL (130ml)',
+  'DEE-ZOL (160ml)',
+  'INJECTOR',
+  'POWER BOOSTER',
+  'X-TRA-LUBE',
+  'Engine Flush',
+  'SPRAY EP-99',
+  'GREASE',
+  'MBL 5W-30',
+  'MBL 5W-40',
+  'MBL 10W-40',
+  '(機車) MIX-I-GO',
+  '(機車) X-TRA-LUBE',
+  '(機車) Engine Flush',
+];
+
+// ─── STATE ──────────────────────────────────────────────────
+let itemCount = 0;
+let rawSubtotal = 0; // sum of (qty * price) without tax
+
+// ─── TABS ───────────────────────────────────────────────────
+function switchTab(n) {
+  document.getElementById('p1').classList.toggle('on', n===1);
+  document.getElementById('p2').classList.toggle('on', n===2);
+  document.getElementById('t1').className = 'tab ' + (n===1?'on':'off');
+  document.getElementById('t2').className = 'tab ' + (n===2?'on':'off');
+  if (n===2) updatePanel2();
+}
+
+// ─── ADD / REMOVE ITEM ──────────────────────────────────────
+function addItem() {
+  itemCount++;
+  const id = itemCount;
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.id = 'item-' + id;
+
+  const opts = PRODUCTS.map(p => `<option value="${p}">${p}</option>`).join('');
+
+  div.innerHTML = `
+    <div class="item-top">
+      <span class="item-num">品項 ${id}</span>
+      <span class="item-line-total" id="lt-${id}">$0</span>
+    </div>
+    <div class="item-fields">
+      <div class="fl">
+        <label>品名</label>
+        <select id="pn-${id}" onchange="calc()">
+          <option value="">── 選擇品項 ──</option>
+          ${opts}
+        </select>
+      </div>
+      <div class="fl">
+        <label>數量</label>
+        <input type="number" id="qq-${id}" value="1" min="0" oninput="calc()">
+      </div>
+      <div class="fl">
+        <label>單價</label>
+        <input type="number" id="up-${id}" value="" min="0" placeholder="0" oninput="calc()">
+      </div>
+    </div>
+    <button class="del-btn" onclick="removeItem(${id})">×</button>
+  `;
+  document.getElementById('itemsList').appendChild(div);
+  calc();
+}
+
+function removeItem(id) {
+  const el = document.getElementById('item-' + id);
+  if (el) el.remove();
+  calc();
+}
+
+// ─── CALC (正算) ─────────────────────────────────────────────
+function getItems() {
+  const rows = document.querySelectorAll('.item-row');
+  return Array.from(rows).map(row => {
+    const id = row.id.replace('item-','');
+    const name  = document.getElementById('pn-' + id)?.value || '';
+    const qty   = parseFloat(document.getElementById('qq-' + id)?.value) || 0;
+    const price = parseFloat(document.getElementById('up-' + id)?.value) || 0;
+    return { id, name, qty, price, total: qty * price };
+  });
+}
+
+function calc() {
+  const items = getItems();
+  const hasTax = document.getElementById('taxToggle').checked;
+
+  rawSubtotal = items.reduce((s, i) => s + i.total, 0);
+  const tax   = hasTax ? Math.round(rawSubtotal * 0.05) : 0;
+  const grand = rawSubtotal + tax;
+
+  // line totals
+  items.forEach(i => {
+    const el = document.getElementById('lt-' + i.id);
+    if (el) el.textContent = '$' + fmt(i.total);
+  });
+
+  // summary
+  document.getElementById('s-sub').textContent   = '$' + fmt(rawSubtotal);
+  document.getElementById('s-tax').textContent   = hasTax ? '$' + fmt(tax) : '—';
+  document.getElementById('s-total').textContent = '$' + fmt(grand);
+  document.getElementById('s-tax-row').style.opacity = hasTax ? '1' : '.35';
+
+  renderInvoice1(items, rawSubtotal, tax, grand, hasTax);
+  updatePanel2();
+}
+
+// ─── CALC (倒算) ─────────────────────────────────────────────
+function calcDiscount() {
+  const finalVal = parseFloat(document.getElementById('finalPrice').value);
+  if (!finalVal || finalVal <= 0) {
+    document.getElementById('resultGrid').style.display = 'none';
+    document.getElementById('inv2').innerHTML = '<div class="empty"><div class="ico">🧾</div>輸入優惠金額後<br>自動顯示發票填法</div>';
+    return;
+  }
+
+  // final is inclusive of 5% tax
+  const saleAmt   = Math.round(finalVal / 1.05);   // 未稅銷售額
+  const taxAmt    = finalVal - saleAmt;             // 稅額
+  const discAmt   = rawSubtotal - saleAmt;          // 未稅折扣（正算未稅 - 倒算未稅）
+
+  document.getElementById('r-disc').textContent = '-$' + fmt(discAmt);
+  document.getElementById('r-sale').textContent = '$' + fmt(saleAmt);
+  document.getElementById('r-tax').textContent  = '$' + fmt(taxAmt);
+  document.getElementById('r-fin').textContent  = '$' + fmt(finalVal);
+  document.getElementById('resultGrid').style.display = 'grid';
+
+  renderInvoice2(getItems(), rawSubtotal, discAmt, saleAmt, taxAmt, finalVal);
+}
+
+function updatePanel2() {
+  const hasTax = document.getElementById('taxToggle').checked;
+  const tax    = hasTax ? Math.round(rawSubtotal * 0.05) : 0;
+  const grand  = rawSubtotal + tax;
+  document.getElementById('p2orig').textContent = grand > 0 ? '$' + fmt(grand) : '—';
+  // re-run discount calc if there's already a value
+  const fp = document.getElementById('finalPrice').value;
+  if (fp) calcDiscount();
+}
+
+// ─── RENDER INVOICE 1（正算預覽） ───────────────────────────
+function renderInvoice1(items, subtotal, tax, grand, hasTax) {
+  const el = document.getElementById('inv1');
+  const validItems = items.filter(i => i.total > 0 || i.name);
+  if (validItems.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="ico">🧾</div>請先輸入品項</div>';
+    return;
+  }
+
+  const rows = validItems.map(i => `
+    <tr>
+      <td class="cn">${i.name || '（未命名）'}</td>
+      <td class="cq">${i.qty}</td>
+      <td class="cp">${fmt(i.price)}</td>
+      <td class="ca">${fmt(i.total)}</td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+  <div class="inv-wrap">
+    <div class="inv-hd">統一發票（三聯式）填寫預覽</div>
+    <div class="inv-remind">
+      ⚠ 請記得手寫填入：<strong>買受人名稱、統一編號、地址、開立日期</strong>
+    </div>
+    <table class="inv-tbl">
+      <thead>
+        <tr>
+          <th class="cn">品　名</th>
+          <th class="cq">數量</th>
+          <th class="cp">單價</th>
+          <th class="ca">金　額</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+    <div class="inv-ft">
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">銷售額合計</div>
+        <div class="inv-ft-val">${fmt(subtotal)}</div>
+      </div>
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">營業稅</div>
+        <div class="inv-ft-val tax-opts">
+          <div class="tax-row-opts">
+            <span class="${hasTax?'ck':''}">✓ 應稅</span>
+            <span>零稅率</span>
+            <span>免稅</span>
+          </div>
+          <div style="font-size:15px;font-weight:bold;align-self:flex-end">${hasTax ? fmt(tax) : '0'}</div>
+        </div>
+      </div>
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">總　計</div>
+        <div class="inv-ft-val big">${fmt(grand)}</div>
+      </div>
+      <div class="inv-cw">
+        <div class="inv-cw-lbl">總計新臺幣（中文大寫）</div>
+        <div class="inv-cw-val">${toChinese(grand)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── RENDER INVOICE 2（倒算折讓指引） ───────────────────────
+function renderInvoice2(items, origSubtotal, discAmt, saleAmt, taxAmt, finalAmt) {
+  const el = document.getElementById('inv2');
+  const validItems = items.filter(i => i.total > 0 || i.name);
+
+  const rows = validItems.map(i => `
+    <tr>
+      <td class="cn">${i.name || '（未命名）'}</td>
+      <td class="cq">${i.qty}</td>
+      <td class="cp">${fmt(i.price)}</td>
+      <td class="ca">${fmt(i.total)}</td>
+    </tr>
+  `).join('');
+
+  const discRow = discAmt > 0 ? `
+    <tr class="disc">
+      <td class="cn">特別折扣</td>
+      <td class="cq">1</td>
+      <td class="cp">—</td>
+      <td class="ca">-${fmt(discAmt)}</td>
+    </tr>
+  ` : '';
+
+  el.innerHTML = `
+  <div class="inv-wrap">
+    <div class="inv-hd">發票填寫指引（含折讓）</div>
+    <div class="inv-remind">
+      ⚠ 請記得手寫填入：<strong>買受人名稱、統一編號、地址、開立日期</strong><br>
+      🔴 紅色「特別折扣」行填入金額欄為負值
+    </div>
+    <table class="inv-tbl">
+      <thead>
+        <tr>
+          <th class="cn">品　名</th>
+          <th class="cq">數量</th>
+          <th class="cp">單價</th>
+          <th class="ca">金　額</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        ${discRow}
+      </tbody>
+    </table>
+    <div class="inv-ft">
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">銷售額合計</div>
+        <div class="inv-ft-val">${fmt(saleAmt)}</div>
+      </div>
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">營業稅</div>
+        <div class="inv-ft-val tax-opts">
+          <div class="tax-row-opts">
+            <span class="ck">✓ 應稅</span>
+            <span>零稅率</span>
+            <span>免稅</span>
+          </div>
+          <div style="font-size:15px;font-weight:bold;align-self:flex-end">${fmt(taxAmt)}</div>
+        </div>
+      </div>
+      <div class="inv-ft-row">
+        <div class="inv-ft-lbl">總　計</div>
+        <div class="inv-ft-val big">${fmt(finalAmt)}</div>
+      </div>
+      <div class="inv-cw">
+        <div class="inv-cw-lbl">總計新臺幣（中文大寫）</div>
+        <div class="inv-cw-val">${toChinese(finalAmt)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── RESET ──────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('確定清除所有資料？')) return;
+  document.getElementById('itemsList').innerHTML = '';
+  document.getElementById('finalPrice').value = '';
+  document.getElementById('taxToggle').checked = true;
+  itemCount = 0; rawSubtotal = 0;
+  calc();
+  document.getElementById('resultGrid').style.display = 'none';
+  document.getElementById('inv2').innerHTML = '<div class="empty"><div class="ico">🧾</div>輸入優惠金額後<br>自動顯示發票填法</div>';
+  switchTab(1);
+}
+
+// ─── FORMAT ─────────────────────────────────────────────────
+function fmt(n) {
+  return Math.round(n).toLocaleString('zh-TW');
+}
+
+// ─── 中文大寫 ────────────────────────────────────────────────
+function toChinese(num) {
+  num = Math.round(num);
+  if (num === 0) return '零圓整';
+
+  const digits  = ['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];
+  const units   = ['','拾','佰','仟'];
+  const bigUnits = ['','萬','億'];
+
+  function section(n) {
+    // convert 4-digit section
+    let s = '';
+    let needZero = false;
+    for (let i = 3; i >= 0; i--) {
+      const d = Math.floor(n / Math.pow(10, i)) % 10;
+      if (d !== 0) {
+        if (needZero) s += '零';
+        s += digits[d] + units[i];
+        needZero = false;
+      } else {
+        if (s) needZero = true;
+      }
+    }
+    return s;
+  }
+
+  let result = '';
+  let n = num;
+  for (let b = 2; b >= 0; b--) {
+    const base = Math.pow(10000, b);
+    const part = Math.floor(n / base);
+    n = n % base;
+    if (part > 0) {
+      // if previous part was > 0 and this part is < 1000, add 零
+      if (result && part < 1000) result += '零';
+      result += section(part) + bigUnits[b];
+    } else if (result && n > 0 && b > 0) {
+      // skip, zero will be added by next iteration if needed
+    }
+  }
+
+  return result + '圓整';
+}
+
+// ─── INIT ────────────────────────────────────────────────────
+addItem(); // start with one row
+</script>
+</body>
+</html>
